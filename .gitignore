@@ -1,0 +1,14 @@
+build/CMakeCache.txt
+build/.cmake/api/v1/query/client-vscode/query.json
+build/CMakeFiles/cmake.check_cache
+build/CMakeFiles/CMakeOutput.log
+build/CMakeFiles/3.18.3/CMakeCCompiler.cmake
+build/CMakeFiles/3.18.3/CMakeCXXCompiler.cmake
+build/CMakeFiles/3.18.3/CMakeDetermineCompilerABI_C.bin
+build/CMakeFiles/3.18.3/CMakeDetermineCompilerABI_CXX.bin
+build/CMakeFiles/3.18.3/CMakeRCCompiler.cmake
+build/CMakeFiles/3.18.3/CMakeSystem.cmake
+build/CMakeFiles/3.18.3/CompilerIdC/a.exe
+build/CMakeFiles/3.18.3/CompilerIdC/CMakeCCompilerId.c
+build/CMakeFiles/3.18.3/CompilerIdCXX/a.exe
+build/CMakeFiles/3.18.3/CompilerIdCXX/CMakeCXXCompilerId.cpp
