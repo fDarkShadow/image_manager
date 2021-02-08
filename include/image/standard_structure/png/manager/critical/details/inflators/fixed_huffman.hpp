@@ -50,10 +50,10 @@ namespace image
                                     std::make_pair(83, 4),
                                     std::make_pair(99, 4),
                                     std::make_pair(115, 4),
-                                    std::make_pair(131, 3),
-                                    std::make_pair(163, 3),
-                                    std::make_pair(195, 3),
-                                    std::make_pair(227, 3),
+                                    std::make_pair(131, 5),
+                                    std::make_pair(163, 5),
+                                    std::make_pair(195, 5),
+                                    std::make_pair(227, 5),
                                     std::make_pair(258, 0)
                                 }),
                                 _distance_extra_def({
@@ -144,9 +144,9 @@ namespace image
                                     else if(symbol < 286)
                                     {
                                         symbol -= 257;
-                                        uint8_t length = reader.template get_value<uint8_t>(_length_extra_def[symbol].second) + _length_extra_def[symbol].first;
+                                        std::size_t length = reader.template get_value<uint8_t>(_length_extra_def[symbol].second) + _length_extra_def[symbol].first;
                                         auto distance_symbol = _distance_tree.find(reader);
-                                        uint16_t distance = reader.template get_value<uint16_t>(_distance_extra_def[distance_symbol].second) + _distance_extra_def[distance_symbol].first;
+                                        std::size_t distance = reader.template get_value<uint16_t>(_distance_extra_def[distance_symbol].second) + _distance_extra_def[distance_symbol].first;
                                         for(auto i = 0U; i < length; i++)
                                         {
                                             auto it = result.end();

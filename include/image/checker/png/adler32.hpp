@@ -14,8 +14,8 @@ namespace image
                 public:
                     bool check(model::png::chunck const& chunck, uint32_t checksum)
                     {
-                        uint32_t a = 1;
-                        uint32_t b = 0;
+                        uint64_t a = 1;
+                        uint64_t b = 0;
                         for(uint32_t data : chunck.type)
                         {
                             a = (a + data) % 65521;

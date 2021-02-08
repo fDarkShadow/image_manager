@@ -50,10 +50,10 @@ namespace image
                                     std::make_pair(83, 4),
                                     std::make_pair(99, 4),
                                     std::make_pair(115, 4),
-                                    std::make_pair(131, 3),
-                                    std::make_pair(163, 3),
-                                    std::make_pair(195, 3),
-                                    std::make_pair(227, 3),
+                                    std::make_pair(131, 5),
+                                    std::make_pair(163, 5),
+                                    std::make_pair(195, 5),
+                                    std::make_pair(227, 5),
                                     std::make_pair(258, 0)
                                 }),
                                 _distance_extra_def({
@@ -110,9 +110,9 @@ namespace image
                                     else if(symbol < 286)
                                     {
                                         symbol -= 257;
-                                        uint8_t length = reader.template get_value<uint8_t>(_length_extra_def[symbol].second) + _length_extra_def[symbol].first;
+                                        std::size_t length = reader.template get_value<uint8_t>(_length_extra_def[symbol].second) + _length_extra_def[symbol].first;
                                         auto distance_symbol = trees.second.find(reader);
-                                        uint16_t distance = reader.template get_value<uint16_t>(_distance_extra_def[distance_symbol].second) + _distance_extra_def[distance_symbol].first;
+                                        std::size_t distance = reader.template get_value<uint16_t>(_distance_extra_def[distance_symbol].second) + _distance_extra_def[distance_symbol].first;
                                         for(auto i = 0U; i < length; i++)
                                         {
                                             auto it = result.end();
@@ -153,7 +153,8 @@ namespace image
                                 auto code_length_tree = details::generate_canonical_huffman_tree(code_length_tree_bits_length);
 
                                 std::vector<std::size_t> length_codes;
-                                while(length_codes.size() < hlit + hdist)
+                                length_codes.reserve(hlit + hdist);
+                                while(length_codes.size() < length_codes.capacity())
                                 {
                                     auto symbol = code_length_tree.find(reader);
                                     if(symbol < 16U)
@@ -163,16 +164,16 @@ namespace image
                                     else if(symbol == 16U)
                                     {
                                         std::size_t repeat = reader.template get_value<std::size_t>(2) + 3;
-                                        auto to_be_repeat = length_codes.back();
-                                        for(auto i = 0U; i < repeat; i++)
+                                        auto previous = length_codes.back();
+                                        for(auto j = 0U; j < repeat; j++)
                                         {
-                                            length_codes.emplace_back(to_be_repeat);
+                                            length_codes.emplace_back(previous);
                                         }
                                     }
                                     else if(symbol == 17U)
                                     {
                                         std::size_t repeat = reader.template get_value<std::size_t>(3) + 3;
-                                        for(auto i = 0U; i < repeat; i++)
+                                        for(auto j = 0U; j < repeat; j++)
                                         {
                                             length_codes.emplace_back(0);
                                         }
@@ -180,7 +181,7 @@ namespace image
                                     else if(symbol == 18U)
                                     {
                                         std::size_t repeat = reader.template get_value<std::size_t>(7) + 11;
-                                        for(auto i = 0U; i < repeat; i++)
+                                        for(auto j = 0U; j < repeat; j++)
                                         {
                                             length_codes.emplace_back(0);
                                         }

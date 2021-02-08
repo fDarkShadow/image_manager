@@ -19,6 +19,7 @@ namespace image
                     compression_method(0),
                     filter_method(0),
                     interlace_method(0),
+                    bytes_per_pixel(4), /* TODO : correct */
                     palette_defined(false)
                 {}
 
@@ -29,6 +30,7 @@ namespace image
                 uint8_t compression_method;
                 uint8_t filter_method;
                 uint8_t interlace_method;
+                uint8_t bytes_per_pixel;
                 bool palette_defined;
                 std::vector<uint8_t> datas;
             };

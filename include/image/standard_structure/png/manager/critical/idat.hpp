@@ -4,14 +4,7 @@
 #include "image/model/png/chunck.hpp"
 #include "image/model/png/content.hpp"
 
-#include "details/inflators/no_compression.hpp"
-#include "details/inflators/fixed_huffman.hpp"
-#include "details/inflators/dynamic_huffman.hpp"
-
 #include "image/checker/png/adler32.hpp"
-
-#include "details/stream_reader.hpp"
-#include "details/huffman_tree.hpp"
 
 namespace image
 {
@@ -23,67 +16,139 @@ namespace image
             {
                 struct idat
                 {
-                    details::inflators::inflator<details::inflators::no_compression> _no_compression_inflator;
-                    details::inflators::inflator<details::inflators::fixed_huffman> _fixed_huffman_inflator;
-                    details::inflators::inflator<details::inflators::dynamic_huffman> _dynamic_huffman_inflator;
-
                     void operator()(model::png::chunck const& chunck, model::png::content & content) const
                     {
-                        details::stream_reader<model::png::chunck::data_type> reader(chunck.datas);
-
-                        auto compression_method = reader.get_value<uint8_t>(4);
-                        if(compression_method != 8U)
+                        if(chunck.datas.size() < 6U)
+                        {
+                            throw std::exception() /* TODO : not enough infos */;
+                        }
+                        
+                        auto compression = chunck.datas[0];
+                        auto compression_method = compression & 0xf;
+                        if(compression_method != 8)
                         {
                             throw std::exception() /* TODO : compression method not supported */;
                         }
-                        auto compression_info = reader.get_value<uint8_t>(4);
-                        if(compression_info > 7U)
+                        auto compression_info = (compression >> 4) & 0xf;
+                        if(compression_info > 7)
                         {
                             throw std::exception() /* TODO : compression info not supported */;
                         }
 
-                        auto flag_check = reader.get_value<uint8_t>(5);
-                        auto flag_dict = reader++;
-                        auto flag_level = reader.get_value<uint8_t>(2);
+                        auto flag = chunck.datas[1];
+                        auto flag_check = flag & 0x1f;
+                        auto flag_dict = (flag >> 5) & 1;
+                        auto flag_level = (flag >> 6) & 0b11;
 
-                        auto checksum = (0 | compression_method | compression_info << 4) * 256U + (0 | flag_check | flag_dict << 5 | flag_level << 6);
+                        auto checksum = compression * 256U + flag;
                         if(checksum % 31 != 0)
                         {
                             throw std::exception() /* TODO : wrong checksum for data */;
                         }
 
-                        auto end_reached = false;
-                        std::vector<model::png::chunck::data_type> datas_inflated;
-                        while(!end_reached)
-                        {
-                            end_reached = reader++;
-                            auto type = reader.get_value<uint8_t>(2);
-                            if(type == 0)
-                            {
-                                auto d = _no_compression_inflator.template inflate<model::png::chunck::data_type>(reader);
-                                content.datas.insert(content.datas.end(), d.begin(), d.end());
-                            }
-                            else if(type == 1)
-                            {
-                                auto d = _fixed_huffman_inflator.template inflate<model::png::chunck::data_type>(reader);
-                                content.datas.insert(content.datas.end(), d.begin(), d.end());
-                            }
-                            else if(type == 2)
-                            {
-                                auto d = _dynamic_huffman_inflator.template inflate<model::png::chunck::data_type>(reader);
-                                content.datas.insert(content.datas.end(), d.begin(), d.end());
-                            }
-                            else
-                            {
-                                throw std::exception() /* TODO : type not valid */;
-                            }
-                        }
+                        content.datas.insert(content.datas.end(), chunck.datas.begin() + 2, chunck.datas.end() - 4);
 
-                        auto adler32 = reader.get_value<uint32_t>(32); // TODO : error
+                        auto adler32 = (
+                            chunck.datas[chunck.datas.size() - 4] << 16 &
+                            chunck.datas[chunck.datas.size() - 3] << 8 &
+                            chunck.datas[chunck.datas.size() - 2] << 4 &
+                            chunck.datas[chunck.datas.size() - 1]
+                        );
                         if(!checker::png::adler32().check(chunck, adler32))
                         {
                             //throw std::exception() /* TODO : adler32 wrong */;
                         }
+
+                        //auto line_size = content.width * content.bytes_per_pixel;
+                        //content.datas.reserve(content.height * line_size);
+                        //auto index = 0U;
+                        //for(auto line = 0U; line < content.height; line++)
+                        //{
+                        //    auto filter_type = decompressed_datas.at(index);
+                        //    index++;
+                        //    for(auto p = 0U; p < line_size; p++)
+                        //    {
+                        //        auto filter_x = decompressed_datas.at(index);
+                        //        index++;
+                        //        if(filter_type == 0U) // None
+                        //        {
+                        //            content.datas.emplace_back(filter_x & 0xff);
+                        //        }
+                        //        else if(filter_type == 1U) // Sub
+                        //        {
+                        //            model::png::chunck::data_type d = 0;
+                        //            if(p >= content.bytes_per_pixel)
+                        //            {
+                        //                d = content.datas.at(line * line_size + p - content.bytes_per_pixel);
+                        //            }
+                        //            content.datas.emplace_back((filter_x + d) & 0xff);
+                        //        }
+                        //        else if(filter_type == 2U) // Up
+                        //        {
+                        //            model::png::chunck::data_type d = 0;
+                        //            if(line > 0U)
+                        //            {
+                        //                d = content.datas.at((line - 1) * line_size + p);
+                        //            }
+                        //            content.datas.emplace_back((filter_x + d) & 0xff);
+                        //        }
+                        //        else if(filter_type == 3U) // Average
+                        //        {
+                        //            model::png::chunck::data_type d1 = 0;
+                        //            if(p >= content.bytes_per_pixel)
+                        //            {
+                        //                d1 = content.datas.at(line * line_size + p - content.bytes_per_pixel);
+                        //            }
+                        //            model::png::chunck::data_type d2 = 0;
+                        //            if(line > 0U)
+                        //            {
+                        //                d2 = content.datas.at((line - 1) * line_size + p);
+                        //            }
+                        //            model::png::chunck::data_type d = std::floor((d1 + d2) / 2);
+                        //            content.datas.emplace_back((filter_x + d) & 0xff);
+                        //        }
+                        //        else if(filter_type == 4U) // Paeth
+                        //        {
+                        //            model::png::chunck::data_type d1 = 0;
+                        //            if(p >= content.bytes_per_pixel)
+                        //            {
+                        //                d1 = content.datas.at(line * line_size + p - content.bytes_per_pixel);
+                        //            }
+                        //            model::png::chunck::data_type d2 = 0;
+                        //            if(line > 0U)
+                        //            {
+                        //                d2 = content.datas.at((line - 1) * line_size + p);
+                        //            }
+                        //            model::png::chunck::data_type d3 = 0;
+                        //            if(line > 0U && p >= content.bytes_per_pixel)
+                        //            {
+                        //                d3 = content.datas.at((line - 1) * line_size + p - content.bytes_per_pixel);
+                        //            }
+                        //            model::png::chunck::data_type d = 0;
+                        //            auto p = d1 + d2 - d3;
+                        //            auto pd1 = std::abs(p - d1);
+                        //            auto pd2 = std::abs(p - d2);
+                        //            auto pd3 = std::abs(p - d3);
+                        //            if(pd1 <= pd2 && pd1 <= pd3)
+                        //            {
+                        //                d = d1;
+                        //            }
+                        //            else if(pd2 <= pd3)
+                        //            {
+                        //                d = d2;
+                        //            }
+                        //            else
+                        //            {
+                        //                d = d3;
+                        //            }
+                        //            content.datas.emplace_back((filter_x + d) & 0xff);
+                        //        }
+                        //        else
+                        //        {
+                        //            throw std::exception() /* TODO : filter type not known */;
+                        //        }
+                        //    }
+                        //}
                     }
                 };
             }
