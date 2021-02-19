@@ -15,6 +15,9 @@
 
 #include "image/standard_structure/png/chuncks.hpp"
 
+#include "image/compressor/png/decompressor.hpp"
+#include "image/filter/png/filter.hpp"
+
 #include "image/model/png/content.hpp"
 #include "image/model/image.hpp"
 
@@ -31,8 +34,18 @@ namespace image
         {
             using image_type = type::png;
 
+            std::map<std::string, model::png::standard_chunck> _standard_chuncks;
+            compressor::png::decompressor _decompressor;
+            filter::png::filter _filter;
+
+            reader() :
+                _standard_chuncks(standard_structure::png::chuncks::get()),
+                _decompressor(),
+                _filter()
+            {}
+
             template<class Stream>
-            static model::image read_image(Stream & stream)
+            model::image read_image(Stream & stream)
             {
                 auto signature_read = signature::reader<image_type>::read_signature(stream);
                 auto signature_default = signature::standard<image_type>::get_signature();
@@ -41,11 +54,11 @@ namespace image
                     throw exception::reader::wrong_signature<image_type>(signature_read, signature_default);
                 }
 
-                model::png::content content;
+                model::image image_read;
                 {
-                    auto standard_chuncks = standard_structure::png::chuncks::get();
+                    model::png::content content;
                     checker::png::crc crc_checker;
-                    checker::png::structure structure_checker(standard_chuncks);
+                    checker::png::structure structure_checker(_standard_chuncks);
                     model::png::chunck chunck;
                     do
                     {
@@ -58,15 +71,29 @@ namespace image
                         {
                             throw exception::reader::wrong_structure<image_type>(chunck);
                         }
-                        auto standard_chunck = standard_chuncks.find(chunck.type);
-                        if(standard_chunck != standard_chuncks.end())
+                        auto standard_chunck = _standard_chuncks.find(chunck.type);
+                        if(standard_chunck != _standard_chuncks.end())
                         {
                             standard_chunck->second(chunck, content);
                         }
                     } while(chunck.type != "IEND" && !stream.eof());
-                }
 
-                model::image image_read;
+                    auto decompressed_datas = _decompressor.decompress(content.datas);
+                    auto filtered_datas = _filter.compute(decompressed_datas, content.width, content.height, content.bytes_per_pixel);
+
+                    image_read.width = content.width;
+                    image_read.height = content.height;
+                    image_read.pixels.reserve(image_read.width * image_read.height);
+                    for(auto i = 0U; i < filtered_datas.size(); i+=4U)
+                    {
+                        image_read.pixels.emplace_back(std::make_tuple(
+                            filtered_datas[i],
+                            filtered_datas[i+1],
+                            filtered_datas[i+2],
+                            filtered_datas[i+3]
+                        ));
+                    }
+                }
 
                 return image_read;
             }

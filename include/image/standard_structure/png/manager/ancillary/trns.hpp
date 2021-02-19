@@ -16,7 +16,6 @@ namespace image
                 {
                     void operator()(model::png::chunck const& , model::png::content & ) const
                     {
-
                     }
                 };
             }

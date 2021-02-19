@@ -19,8 +19,11 @@ namespace image
                     compression_method(0),
                     filter_method(0),
                     interlace_method(0),
-                    bytes_per_pixel(4), /* TODO : correct */
-                    palette_defined(false)
+                    bytes_per_pixel(5./32.), /* TODO : correct */
+                    palette_defined(false),
+                    flag_check(0),
+                    flag_dict(false),
+                    flag_level(0)
                 {}
 
                 uint32_t width;
@@ -30,8 +33,11 @@ namespace image
                 uint8_t compression_method;
                 uint8_t filter_method;
                 uint8_t interlace_method;
-                uint8_t bytes_per_pixel;
+                float bytes_per_pixel;
                 bool palette_defined;
+                uint8_t flag_check;
+                bool flag_dict;
+                uint8_t flag_level;
                 std::vector<uint8_t> datas;
             };
         }

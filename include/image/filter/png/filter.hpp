@@ -12,25 +12,16 @@ namespace image
         {
             struct filter
             {
-                //template<class T>
-                //T filter_a(T value)
-                //{
-                //    T t = 0;
-                //    if(p >= bytes_per_pixel)
-                //    {
-                //        d = filter_datas.at(line * line_size + p - bytes_per_pixel);
-                //    }
-                //}
-                
+            public:
                 template<class T>
                 std::vector<T> compute(
                     std::vector<T> const& datas,
                     uint32_t width,
                     uint32_t height,
-                    uint8_t bytes_per_pixel
+                    float bytes_per_pixel
                 ) const
                 {
-                    auto line_size = width * bytes_per_pixel;
+                    auto line_size = std::round(width * bytes_per_pixel);
                     std::vector<T> filter_datas;
                     filter_datas.reserve(height * line_size);
                     auto index = 0U;
@@ -42,78 +33,29 @@ namespace image
                         {
                             auto filter_x = datas.at(index);
                             index++;
-                            if(filter_type == 0U) // None
+                            if(filter_type == 0U)
                             {
                                 filter_datas.emplace_back(filter_x & 0xff);
                             }
-                            else if(filter_type == 1U) // Sub
+                            else if(filter_type == 1U)
                             {
-                                T d = 0;
-                                if(colomn >= bytes_per_pixel)
-                                {
-                                    d = filter_datas.at(line * line_size + colomn - bytes_per_pixel);
-                                }
-                                filter_datas.emplace_back((filter_x + d) & 0xff);
+                                auto filtered = filter_sub(filter_datas, line, colomn, line_size, bytes_per_pixel);
+                                filter_datas.emplace_back((filter_x + filtered) & 0xff);
                             }
-                            else if(filter_type == 2U) // Up
+                            else if(filter_type == 2U)
                             {
-                                T d = 0;
-                                if(line > 0U)
-                                {
-                                    d = filter_datas.at((line - 1) * line_size + colomn);
-                                }
-                                filter_datas.emplace_back((filter_x + d) & 0xff);
+                                auto filtered = filter_up(filter_datas, line, colomn, line_size, bytes_per_pixel);
+                                filter_datas.emplace_back((filter_x + filtered) & 0xff);
                             }
-                            else if(filter_type == 3U) // Average
+                            else if(filter_type == 3U)
                             {
-                                T d1 = 0;
-                                if(colomn >= bytes_per_pixel)
-                                {
-                                    d1 = filter_datas.at(line * line_size + colomn - bytes_per_pixel);
-                                }
-                                T d2 = 0;
-                                if(line > 0U)
-                                {
-                                    d2 = filter_datas.at((line - 1) * line_size + colomn);
-                                }
-                                T d = std::floor((d1 + d2) / 2);
-                                filter_datas.emplace_back((filter_x + d) & 0xff);
+                                auto filtered = filter_average(filter_datas, line, colomn, line_size, bytes_per_pixel);
+                                filter_datas.emplace_back((filter_x + filtered) & 0xff);
                             }
-                            else if(filter_type == 4U) // Paeth
+                            else if(filter_type == 4U)
                             {
-                                T d1 = 0;
-                                if(colomn >= bytes_per_pixel)
-                                {
-                                    d1 = filter_datas.at(line * line_size + colomn - bytes_per_pixel);
-                                }
-                                T d2 = 0;
-                                if(line > 0U)
-                                {
-                                    d2 = filter_datas.at((line - 1) * line_size + colomn);
-                                }
-                                T d3 = 0;
-                                if(line > 0U && colomn >= bytes_per_pixel)
-                                {
-                                    d3 = filter_datas.at((line - 1) * line_size + colomn - bytes_per_pixel);
-                                }
-                                T d = 0;
-                                auto p = d1 + d2 - d3;
-                                auto pd1 = std::abs(p - d1);
-                                auto pd2 = std::abs(p - d2);
-                                auto pd3 = std::abs(p - d3);
-                                if(pd1 <= pd2 && pd1 <= pd3)
-                                {
-                                    d = d1;
-                                }
-                                else if(pd2 <= pd3)
-                                {
-                                    d = d2;
-                                }
-                                else
-                                {
-                                    d = d3;
-                                }
-                                filter_datas.emplace_back((filter_x + d) & 0xff);
+                                auto filtered = filter_paeth(filter_datas, line, colomn, line_size, bytes_per_pixel);
+                                filter_datas.emplace_back((filter_x + filtered) & 0xff);
                             }
                             else
                             {
@@ -122,6 +64,70 @@ namespace image
                         }
                     }
                     return filter_datas;
+                }
+
+            private:
+                template<class T>
+                T filter_sub(std::vector<T> const& filter_datas, uint32_t line, uint32_t colomn, uint32_t line_size, float bytes_per_pixel) const
+                {
+                    T data = 0;
+                    if(colomn >= bytes_per_pixel)
+                    {
+                        data = filter_datas.at(line * line_size + colomn - bytes_per_pixel);
+                    }
+                    return data;
+                }
+
+                template<class T>
+                T filter_up(std::vector<T> const& filter_datas, uint32_t line, uint32_t colomn, uint32_t line_size, float ) const
+                {
+                    T data = 0;
+                    if(line > 0U)
+                    {
+                        data = filter_datas.at((line - 1) * line_size + colomn);
+                    }
+                    return data;
+                }
+
+                template<class T>
+                T filter_average(std::vector<T> const& filter_datas, uint32_t line, uint32_t colomn, uint32_t line_size, float bytes_per_pixel) const
+                {
+                    auto data_sub = filter_sub(filter_datas, line, colomn, line_size, bytes_per_pixel);
+                    auto data_up = filter_up(filter_datas, line, colomn, line_size, bytes_per_pixel);
+                    auto data = std::floor((data_sub + data_up) / 2);
+                    return data;
+                }
+
+                template<class T>
+                T filter_paeth(std::vector<T> const& filter_datas, uint32_t line, uint32_t colomn, uint32_t line_size, float bytes_per_pixel) const
+                {
+                    auto data_sub = filter_sub(filter_datas, line, colomn, line_size, bytes_per_pixel);
+                    auto data_up = filter_up(filter_datas, line, colomn, line_size, bytes_per_pixel);
+                    T data_mid = 0;
+                    if(line > 0U && colomn >= bytes_per_pixel)
+                    {
+                        data_mid = filter_datas.at((line - 1) * line_size + colomn - bytes_per_pixel);
+                    }
+
+                    T data = 0;
+                    auto value = data_sub + data_up - data_mid;
+                    auto paeth_sub = std::abs(value - data_sub);
+                    auto paeth_up = std::abs(value - data_up);
+                    auto paeth_mid = std::abs(value - data_mid);
+                    if(paeth_sub <= paeth_up && paeth_sub <= paeth_mid)
+                    {
+                        data = paeth_sub;
+                    }
+                    else if(paeth_up <= paeth_mid)
+                    {
+                        data = paeth_up;
+                    }
+                    else
+                    {
+                        data = paeth_mid;
+                    }
+
+                    return data;
                 }
             };
         }
